@@ -17,6 +17,14 @@ from chainer import training
 from chainer.training import extensions
 
 
+import pyximport
+pyximport.install()
+import floatlib
+
+floatlib.set_ftz()
+floatlib.set_daz()
+
+
 # Network definition
 class MLP(chainer.Chain):
 
