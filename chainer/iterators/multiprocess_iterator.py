@@ -2,6 +2,7 @@ from __future__ import division
 import multiprocessing
 from multiprocessing import pool
 from multiprocessing import sharedctypes
+import signal
 import warnings
 
 import numpy
@@ -353,6 +354,7 @@ _mem_list = None
 
 def _init_worker(dataset, mem_list):
     global _dataset, _mem_list
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     _dataset = dataset
     _mem_list = mem_list
 
