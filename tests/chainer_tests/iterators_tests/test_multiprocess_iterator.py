@@ -457,7 +457,7 @@ no_wait = NoWaitDataSet()
 
 if __name__ == '__main__':
     if {shared_mem} is not None and {dataset} is infinite_wait:
-        iterators.MultiprocessIterator._interruption_testing = True
+        iterators._interruption_testing = True
     it = iterators.MultiprocessIterator({dataset}, 100,
                                         n_processes={n_processes},
                                         n_prefetch={n_prefetch},

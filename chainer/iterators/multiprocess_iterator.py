@@ -18,6 +18,7 @@ _short_time = 0.001
 _PrefetchState = namedtuple('_PrefetchState', (
     'current_position', 'epoch', 'is_new_epoch',
     'previous_epoch_detail', 'order'))
+_interruption_testing = False
 
 
 class MultiprocessIterator(iterator.Iterator):
@@ -51,8 +52,6 @@ class MultiprocessIterator(iterator.Iterator):
 
     """
 
-    _interruption_testing = False  # for testing
-
     def __init__(self, dataset, batch_size, repeat=True, shuffle=True,
                  n_processes=None, n_prefetch=1, shared_mem=None):
         self.dataset = dataset
@@ -65,26 +64,22 @@ class MultiprocessIterator(iterator.Iterator):
         self.shared_mem = shared_mem
 
         self._finalized = False
+        self._thread = None
 
         self._comm = _Communicator(self.n_prefetch)
         self.reset()
 
-        self._prefetch_loop = _PrefetchLoop(
-            self.dataset, self.batch_size, self.repeat, self.shuffle,
-            self.n_processes, self.n_prefetch, self.shared_mem, self._comm,
-            self._interruption_testing)
-        # defer launching prefetch thread until creating the worker pool,
-        # not to leave a background thread in forked processes.
-        self._thread = None
 
     def __next__(self):
         measure_mode = False
         if self._thread is None:
-            if self._prefetch_loop.measure_required():
+            prefetch_loop = _PrefetchLoop(
+                self.dataset, self.batch_size, self.repeat,
+                self.n_processes, self.shared_mem, self._comm)
+            if prefetch_loop.measure_required():
                 measure_mode = True
-                batch, prefetch_state = self._prefetch_loop.measure()
-            self._thread = self._prefetch_loop.launch_thread()
-            del self._prefetch_loop
+                batch, prefetch_state = prefetch_loop.measure()
+            self._thread = prefetch_loop.launch_thread()
 
         if not measure_mode:
             batch, prefetch_state = self._comm.get()
@@ -101,32 +96,27 @@ class MultiprocessIterator(iterator.Iterator):
     def __del__(self):
         # When `self.__del__()` is called, `self.__init__()` may not be
         # finished. So some attributes may be undefined.
-        if not hasattr(self, '_finalized'):
+        if getattr(self, '_finalized', True):
             # We don't know how to finalize this uninitialized object
             return
-        if not hasattr(self, '_comm'):
-            self._comm = None
-        if not hasattr(self, '_thread'):
-            self._thread = None
+        comm = getattr(self, '_comm', None)
+        t = getattr(self, '_thread', None)
 
-        if self._finalized:
-            return
         self._finalized = True
-        if self._comm is None:
-            return
-        self._comm.terminate()
+        self._thread = None
+        if comm is not None:
+            comm.terminate()
 
-        if self._thread is None:
-            return
-        while self._thread.is_alive():
-            self._thread.join(_response_time)
+        if t is not None:
+            while t.is_alive():
+                t.join(_response_time)
 
     finalize = __del__
 
     def __copy__(self):
         other = MultiprocessIterator(
             self.dataset, self.batch_size, self.repeat, self.shuffle,
-            self.n_processes, self.n_prefetch, self.shared_mem)
+            self.n_processes, self.shared_mem)
 
         other.current_position = self.current_position
         other.epoch = self.epoch
@@ -266,21 +256,16 @@ class _Communicator(object):
 
 class _PrefetchLoop(object):
 
-    def __init__(self, dataset, batch_size, repeat, shuffle,
-                 n_processes, n_prefetch, mem_size, comm,
-                 _interruption_testing):
+    def __init__(self, dataset, batch_size, repeat, n_processes, mem_size,
+                 comm):
         self.dataset = dataset
         self.batch_size = batch_size
         self.repeat = repeat
-        self.shuffle = shuffle
         self.n_processes = n_processes
         self.mem_size = mem_size
         self.comm = comm
 
         self._allocate_shared_memory()
-        self._pool = None
-
-        self._interruption_testing = _interruption_testing
 
     def measure_required(self):
         return self.mem_size is None
@@ -304,58 +289,49 @@ class _PrefetchLoop(object):
         if self.measure_required():
             self.mem_bulk = None
         else:
-            self.mem_bulk = \
-                sharedctypes.RawArray('b', self.batch_size * self.mem_size)
+            self.mem_bulk = sharedctypes.RawArray(
+                'b', self.batch_size * self.mem_size)
 
     def launch_thread(self):
-        self._pool = multiprocessing.Pool(
+        pool = multiprocessing.Pool(
             processes=self.n_processes,
             initializer=_fetch_setup,
             initargs=(self.dataset, self.mem_size, self.mem_bulk))
-        if self._interruption_testing:
-            pids = self._pool.map(_report_pid, range(self.n_processes))
+        if _interruption_testing:
+            pids = pool.map(
+                _report_pid, six.moves.range(self.n_processes), chunksize=1)
             print(' '.join(map(str, pids)))
             sys.stdout.flush()
 
-        thread = threading.Thread(target=self._run, name='prefetch_loop')
+        thread = threading.Thread(
+            target=self._run, args=(pool,), name='prefetch_loop')
         thread.setDaemon(True)
         thread.start()
         return thread
 
-    def _run(self):
-        alive = True
+    def _run(self, pool):
         try:
-            while alive:
-                alive = self._task()
-        finally:
-            self._pool.close()
-            self._pool.join()
-
-    def _task(self):
-        status, prefetch_state, reset_count = self.comm.check()
-        if status == _Communicator.STATUS_RESET:
-            self.prefetch_state = prefetch_state
-        elif status == _Communicator.STATUS_TERMINATE:
-            return False  # stop loop
-
-        indices = self._proceed()
-        if indices is None:  # stop iteration
-            batch = None
-        else:
-            future = self._pool.map_async(_fetch_run, enumerate(indices))
             while True:
-                try:
+                batch = None
+                status, prefetch_state, reset_count = self.comm.check()
+                if status == _Communicator.STATUS_TERMINATE:
+                    return False  # stop loop
+                if status == _Communicator.STATUS_RESET:
+                    self.prefetch_state = prefetch_state
+
+                indices = self._proceed()
+                if indices is not None:  # stop iteration
+                    future = pool.map_async(_fetch_run, enumerate(indices))
+                    while not future.ready():
+                        future.wait(_response_time)
+                        if self.comm.is_terminated:
+                            return False
                     data_all = future.get(_response_time)
-                except multiprocessing.TimeoutError:
-                    if self.comm.is_terminated:
-                        return False
-                else:
-                    break
+                    batch = [_unpack(data, self.mem_bulk) for data in data_all]
 
-            batch = [_unpack(data, self.mem_bulk) for data in data_all]
-
-        self.comm.put(batch, self.prefetch_state, reset_count)
-        return True
+                self.comm.put(batch, self.prefetch_state, reset_count)
+        finally:
+            pool.terminate()
 
     def _proceed(self):
         n = len(self.dataset)
@@ -380,14 +356,13 @@ class _PrefetchLoop(object):
             if order is None:
                 indices = numpy.arange(pos, n)
                 if self.repeat:
-                    indices = \
-                        numpy.concatenate((indices, numpy.arange(new_pos)))
+                    indices = numpy.concatenate(
+                        (indices, numpy.arange(new_pos)))
             else:
                 indices = order[pos:n]
                 if self.repeat:
                     order = numpy.random.permutation(n)
-                    indices = \
-                        numpy.concatenate((indices, order[:new_pos]))
+                    indices = numpy.concatenate((indices, order[:new_pos]))
             epoch += 1
             is_new_epoch = True
 
