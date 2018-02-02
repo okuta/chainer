@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -164,24 +165,25 @@ class TestRawArray(unittest.TestCase):
         pass
 
     @attr.gpu
+    @unittest.skipUnless(mpu.MultiprocessParallelUpdater.available(),
+                         "MultiprocessParallelUpdater requires NCCL.")
     def test_update_uses_raw_array(self):
-        if mpu.MultiprocessParallelUpdater.available():
-            model = SimpleNetRawArray(self)
-            dataset = [((numpy.ones((2, 5, 5)) * i).astype(numpy.float32),
-                        numpy.int32(0)) for i in range(100)]
+        model = SimpleNetRawArray(self)
+        dataset = [(numpy.full((2, 5, 5), i, numpy.float32),
+                    numpy.int32(0)) for i in range(100)]
 
-            batch_size = 5
-            devices = (1,)
-            iters = [chainer.iterators.SerialIterator(i, batch_size) for i in
-                     chainer.datasets.split_dataset_n_random(
-                         dataset, len(devices))]
-            optimizer = chainer.optimizers.SGD(lr=1.0)
-            optimizer.setup(model)
-            updater = mpu.MultiprocessParallelUpdater(
-                iters, optimizer, devices=devices)
-            updater.update()
+        batch_size = 5
+        devices = (1,)
+        iters = [chainer.iterators.SerialIterator(i, batch_size) for i in
+                 chainer.datasets.split_dataset_n_random(
+                     dataset, len(devices))]
+        optimizer = chainer.optimizers.SGD(lr=1.0)
+        optimizer.setup(model)
+        updater = mpu.MultiprocessParallelUpdater(
+            iters, optimizer, devices=devices)
+        updater.update()
 
-            self.assertEqual(model.call_called, 1)
+        self.assertEqual(model.call_called, 1)
 
 
 class SimpleNetChild(chainer.Chain):
@@ -232,25 +234,28 @@ class TestChildReporter(unittest.TestCase):
         pass
 
     @attr.gpu
+    @unittest.skipUnless(
+        sys.version_info >= (3, 5) and
+        mpu.MultiprocessParallelUpdater.available(),
+        'MultiprocessParallelUpdater requires Python 3.4+ and NCCL.')
     def test_update_uses_raw_array(self):
-        if mpu.MultiprocessParallelUpdater.available():
-            model = SimpleNetChildReporter()
-            dataset = [((numpy.ones((2, 5, 5)) * i).astype(numpy.float32),
-                        numpy.int32(0)) for i in range(100)]
+        model = SimpleNetChildReporter()
+        dataset = [(numpy.full((2, 5, 5), i, numpy.float32),
+                    numpy.int32(0)) for i in range(100)]
 
-            batch_size = 5
-            devices = (0, 1)
-            iters = [chainer.iterators.SerialIterator(i, batch_size) for i in
-                     chainer.datasets.split_dataset_n_random(
-                         dataset, len(devices))]
-            optimizer = chainer.optimizers.SGD(lr=1.0)
-            optimizer.setup(model)
-            updater = mpu.MultiprocessParallelUpdater(
-                iters, optimizer, devices=devices)
-            trainer = Trainer(updater, (1, 'iteration'), '/tmp')
-            trainer.run()
+        batch_size = 5
+        devices = (0, 1)
+        iters = [chainer.iterators.SerialIterator(i, batch_size)
+                 for i in chainer.datasets.split_dataset_n_random(
+                     dataset, len(devices))]
+        optimizer = chainer.optimizers.SGD(lr=1.0)
+        optimizer.setup(model)
+        updater = mpu.MultiprocessParallelUpdater(
+            iters, optimizer, devices=devices)
+        trainer = Trainer(updater, (1, 'iteration'), '/tmp')
+        trainer.run()
 
-            self.assertEqual(model.call_called, 1)
+        self.assertEqual(model.call_called, 1)
 
 
 testing.run_module(__name__, __file__)
