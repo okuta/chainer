@@ -1,14 +1,14 @@
 import numpy
 
 import chainer
-from chainer import cuda
+from chainer.backends import cuda
 from chainer import function_node
 import chainer.functions
 from chainer.utils import type_check
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
-    libcudnn = cudnn.cudnn
+    libcudnn = cuda.cuda.cudnn
     _algorithm = libcudnn.CUDNN_SOFTMAX_ACCURATE
     _mode = libcudnn.CUDNN_SOFTMAX_MODE_CHANNEL
 
@@ -138,14 +138,14 @@ def softmax(x, axis=1):
 
         >>> x = np.array([[0, 1, 2], [0, 2, 4]], 'f')
         >>> x
-        array([[ 0.,  1.,  2.],
-               [ 0.,  2.,  4.]], dtype=float32)
+        array([[0., 1., 2.],
+               [0., 2., 4.]], dtype=float32)
         >>> y = F.softmax(x, axis=1)
         >>> y.data
-        array([[ 0.09003057,  0.24472848,  0.66524094],
-               [ 0.01587624,  0.11731043,  0.86681336]], dtype=float32)
+        array([[0.09003057, 0.24472848, 0.66524094],
+               [0.01587624, 0.11731043, 0.86681336]], dtype=float32)
         >>> F.sum(y, axis=1).data
-        array([ 1.,  1.], dtype=float32)
+        array([1., 1.], dtype=float32)
 
     """
     return Softmax(axis=axis).apply((x,))[0]

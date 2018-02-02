@@ -1,14 +1,14 @@
 import numpy
 
 import chainer
-from chainer import cuda
+from chainer.backends import cuda
 from chainer import function_node
 from chainer import utils
 from chainer.utils import type_check
 
 if cuda.cudnn_enabled:
     cudnn = cuda.cudnn
-    libcudnn = cudnn.cudnn
+    libcudnn = cuda.cuda.cudnn
     _mode = libcudnn.CUDNN_ACTIVATION_SIGMOID
 
 
@@ -113,7 +113,7 @@ def sigmoid(x):
         >>> x
         array([-2.,  0.,  2.], dtype=float32)
         >>> F.sigmoid(x)
-        variable([ 0.11920291,  0.5       ,  0.88079709])
+        variable([0.11920291, 0.5       , 0.8807971 ])
 
     """
     y, = Sigmoid().apply((x,))

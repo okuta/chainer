@@ -15,7 +15,7 @@
 | **Examples** ([Official](https://github.com/chainer/chainer/blob/master/examples), [External](https://github.com/chainer/chainer/wiki/External-examples))
 
 **Forum** ([en](https://groups.google.com/forum/#!forum/chainer), [ja](https://groups.google.com/forum/#!forum/chainer-jp))
-| **Slack invitation** ([en](https://bit.ly/chainer-slack), [ja](https://bit.ly/chainer-jp-slack))
+| **Slack invitation** ([en](https://bit.ly/join-chainer-slack), [ja](https://bit.ly/join-chainer-jp-slack))
 | **Slack archive** ([en](https://chainer.slackarchive.io), [ja](https://chainer-jp.slackarchive.io))
 | **Twitter** ([en](https://twitter.com/ChainerOfficial), [ja](https://twitter.com/ChainerJP))
 
@@ -26,7 +26,7 @@ For more details of Chainer, see the documents and resources listed above and jo
 
 ## Stable version
 
-The stable version of current Chainer is separated in here: [v2](https://github.com/chainer/chainer/tree/v2).
+The stable version of current Chainer is separated in here: [v3](https://github.com/chainer/chainer/tree/v3).
 
 ## Installation
 

@@ -1,4 +1,8 @@
-"""Collection of :class:`~chainer.Function` implementations."""
+"""Collection of function implementations.
+
+Functions are either implemented as :class:`~chainer.Function`\\ s or
+:class:`~chainer.FunctionNode`\\ s.
+"""
 
 from chainer.functions.activation.clipped_relu import clipped_relu  # NOQA
 from chainer.functions.activation.clipped_relu import ClippedReLU  # NOQA
@@ -120,6 +124,7 @@ from chainer.functions.connection.n_step_rnn import NStepBiRNNReLU  # NOQA
 from chainer.functions.connection.n_step_rnn import NStepBiRNNTanh  # NOQA
 from chainer.functions.connection.n_step_rnn import NStepRNNReLU  # NOQA
 from chainer.functions.connection.n_step_rnn import NStepRNNTanh  # NOQA
+from chainer.functions.connection.shift import shift  # NOQA
 
 from chainer.functions.evaluation.accuracy import accuracy  # NOQA
 from chainer.functions.evaluation.accuracy import Accuracy  # NOQA
@@ -172,9 +177,10 @@ from chainer.functions.math.batch_l2_norm_squared import batch_l2_norm_squared  
 from chainer.functions.math.batch_l2_norm_squared import BatchL2NormSquared  # NOQA
 from chainer.functions.math.bias import bias  # NOQA
 from chainer.functions.math.ceil import ceil  # NOQA
-from chainer.functions.math.ceil import Ceil  # NOQA
 from chainer.functions.math.clip import clip  # NOQA
 from chainer.functions.math.clip import Clip  # NOQA
+from chainer.functions.math.cumsum import cumsum  # NOQA
+from chainer.functions.math.cumsum import Cumsum  # NOQA
 from chainer.functions.math.det import batch_det  # NOQA
 from chainer.functions.math.det import BatchDet  # NOQA
 from chainer.functions.math.det import det  # NOQA
@@ -188,8 +194,8 @@ from chainer.functions.math.exponential import log2  # NOQA
 from chainer.functions.math.exponential import Log2  # NOQA
 from chainer.functions.math.exponential_m1 import expm1  # NOQA
 from chainer.functions.math.exponential_m1 import Expm1  # NOQA
+from chainer.functions.math.fix import fix  # NOQA
 from chainer.functions.math.floor import floor  # NOQA
-from chainer.functions.math.floor import Floor  # NOQA
 from chainer.functions.math.fmod import fmod  # NOQA
 from chainer.functions.math.fmod import Fmod  # NOQA
 from chainer.functions.math.hyperbolic import cosh  # NOQA
@@ -226,6 +232,7 @@ from chainer.functions.math.minmax import Min  # NOQA
 from chainer.functions.math.prod import prod  # NOQA
 from chainer.functions.math.prod import Prod  # NOQA
 from chainer.functions.math.scale import scale  # NOQA
+from chainer.functions.math.sign import sign  # NOQA
 from chainer.functions.math.sqrt import rsqrt  # NOQA
 from chainer.functions.math.sqrt import sqrt  # NOQA
 from chainer.functions.math.sqrt import Sqrt  # NOQA
@@ -254,6 +261,7 @@ from chainer.functions.noise.dropout import dropout  # NOQA
 from chainer.functions.noise.dropout import Dropout  # NOQA
 from chainer.functions.noise.gaussian import gaussian  # NOQA
 from chainer.functions.noise.gaussian import Gaussian  # NOQA
+from chainer.functions.noise.gumbel_softmax import gumbel_softmax  # NOQA
 from chainer.functions.noise.simplified_dropconnect import simplified_dropconnect  # NOQA
 from chainer.functions.noise.simplified_dropconnect import SimplifiedDropconnect  # NOQA
 from chainer.functions.noise.zoneout import zoneout  # NOQA

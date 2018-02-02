@@ -1,8 +1,6 @@
 from __future__ import division
 
-import numpy
-
-from chainer import cuda
+from chainer.backends import cuda
 from chainer import function
 from chainer.utils import type_check
 
@@ -17,7 +15,7 @@ class BinaryAccuracy(function.Function):
 
         type_check.expect(
             x_type.dtype.kind == 'f',
-            t_type.dtype == numpy.int32,
+            t_type.dtype.kind == 'i',
             t_type.shape == x_type.shape,
         )
 
@@ -45,7 +43,7 @@ def binary_accuracy(y, t):
 
         t (:class:`~chainer.Variable` or :class:`numpy.ndarray` or \
         :class:`cupy.ndarray`):
-            Array holding an int32 vector of ground truth labels.
+            Array holding a signed integer vector of ground truth labels.
             If ``t[i] == 1``, it indicates that i-th sample is positive.
             If ``t[i] == 0``, it indicates that i-th sample is negative.
             If ``t[i] == -1``, corresponding ``y[i]`` is ignored.
@@ -66,7 +64,7 @@ def binary_accuracy(y, t):
         ...              [1, 0]], 'i')
         >>> F.binary_accuracy(y, t).data \
 # 100% accuracy because all samples are correct.
-        array(1.0)
+        array(1.)
         >>> t = np.array([[0, 0],
         ...              [1, 1]], 'i')
         >>> F.binary_accuracy(y, t).data \
@@ -76,6 +74,6 @@ def binary_accuracy(y, t):
         ...              [1, -1]], 'i')
         >>> F.binary_accuracy(y, t).data \
 # 100% accuracy because of ignoring y[0][1] and y[1][1].
-        array(1.0)
+        array(1.)
     """
     return BinaryAccuracy()(y, t)
